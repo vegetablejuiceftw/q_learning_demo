@@ -1,7 +1,9 @@
-__author__ = 'philippe'
-import World
-import threading
 import time
+import threading
+
+import World
+
+__author__ = 'philippe'
 
 discount = 0.3
 actions = World.actions
@@ -18,7 +20,7 @@ for state in states:
         World.set_cell_score(state, action, temp[action])
     Q[state] = temp
 
-for (i, j, c, w) in World.specials:
+for i, j, c, w in World.specials:
     for action in actions:
         Q[(i, j)][action] = w
         World.set_cell_score((i, j), action, w)
@@ -42,7 +44,7 @@ def do_action(action):
     return s, action, r, s2
 
 
-def max_Q(s):
+def max_q(s):
     val = None
     act = None
     for a, q in Q[s].items():
@@ -52,26 +54,25 @@ def max_Q(s):
     return act, val
 
 
-def inc_Q(s, a, alpha, inc):
+def inc_q(s, a, alpha, inc):
     Q[s][a] *= 1 - alpha
     Q[s][a] += alpha * inc
     World.set_cell_score(s, a, Q[s][a])
 
 
 def run():
-    global discount
     time.sleep(1)
     alpha = 1
     t = 1
     while True:
         # Pick the right action
         s = World.player
-        max_act, max_val = max_Q(s)
-        (s, a, r, s2) = do_action(max_act)
+        max_act, max_val = max_q(s)
+        s, a, r, s2 = do_action(max_act)
 
         # Update Q
-        max_act, max_val = max_Q(s2)
-        inc_Q(s, a, alpha, r + discount * max_val)
+        max_act, max_val = max_q(s2)
+        inc_q(s, a, alpha, r + discount * max_val)
 
         # Check if the game has restarted
         t += 1.0
@@ -83,8 +84,8 @@ def run():
         # Update the learning rate
         alpha = pow(t, -0.1)
 
-        # MODIFY THIS SLEEP IF THE GAME IS GOING TOO FAST.
-        time.sleep(0.1)
+        logic_tics_per_second = 240
+        time.sleep(1 / logic_tics_per_second)
 
 
 t = threading.Thread(target=run)
