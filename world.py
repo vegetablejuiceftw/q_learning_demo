@@ -1,25 +1,29 @@
 from tkinter import Tk, Canvas
+from random import randint, seed
 
 __author__ = 'philippe'
+
+seed("Cupcakes")
 
 master = Tk()
 
 triangle_size = 0.1
-cell_score_min = -0.2
-cell_score_max = 0.2
-width = 50
-x, y = 5, 5
+width = 25
+size = 18
+grid_size_x, grid_size_y = size, size
 actions = "up", "down", "left", "right"
 
-board = Canvas(master, width=x * width, height=y * width)
-player = 0, y - 1
+board = Canvas(master, width=grid_size_x * width, height=grid_size_y * width)
+player = 0, 0
 score = 1
 restart = False
-walk_reward = -0.04
+walk_cost = -0.04
 
-walls = (1, 1), (1, 2), (2, 1), (2, 2)
-specials = (4, 1, "red", -1), (4, 0, "green", 1)
-cell_scores = {}
+walls = {(randint(0, grid_size_x - 1), randint(0, grid_size_y - 1)) for _ in range(grid_size_x * grid_size_y // 6)}
+walls.discard((0, 0))
+specials = {(grid_size_x - 1, grid_size_y - 1): ("green", 1)}
+specials.update({(randint(0, grid_size_x - 1), randint(0, grid_size_y - 1)): ("red", -1) for _ in range(size // 2)})
+triangles = {}
 
 
 def create_triangle(i, j, action):
@@ -46,61 +50,51 @@ def create_triangle(i, j, action):
 
 
 def render_grid():
-    for i in range(x):
-        for j in range(y):
+    for i in range(grid_size_x):
+        for j in range(grid_size_y):
             board.create_rectangle(i * width, j * width, (i + 1) * width, (j + 1) * width, fill="white", width=1)
-            temp = {}
             for action in actions:
-                temp[action] = create_triangle(i, j, action)
-            cell_scores[(i, j)] = temp
-    for i, j, c, w in specials:
+                triangles[(i, j, action)] = create_triangle(i, j, action)
+    for position, data in specials.items():
+        i, j = position
+        c, w = data
         board.create_rectangle(i * width, j * width, (i + 1) * width, (j + 1) * width, fill=c, width=1)
     for i, j in walls:
         board.create_rectangle(i * width, j * width, (i + 1) * width, (j + 1) * width, fill="black", width=1)
 
 
-render_grid()
-
-
-def set_cell_score(state, action, val):
-    triangle = cell_scores[state][action]
-    green_dec = int(min(255, max(0, (val - cell_score_min) * 255.0 / (cell_score_max - cell_score_min))))
-    green = hex(green_dec)[2:]
-    red = hex(255 - green_dec)[2:]
-    if len(red) == 1:
-        red += "0"
-    if len(green) == 1:
-        green += "0"
-    color = "#" + red + green + "00"
-    board.itemconfigure(triangle, fill=color)
+def move_me(new_x, new_y):
+    global player
+    size = 0.6
+    start, end = width * (1 - size) / 2, width * (1 + size) / 2
+    board.coords(
+        me,
+        new_x * width + start,
+        new_y * width + start,
+        new_x * width + end,
+        new_y * width + end
+    )
+    player = new_x, new_y
 
 
 def try_move(dx, dy):
-    global score, restart, player
-    if restart:
-        restart_game()
-    new_x = player[0] + dx
-    new_y = player[1] + dy
-    score += walk_reward
-    if 0 <= new_x < x and 0 <= new_y < y and (new_x, new_y) not in walls:
-        board.coords(
-            me,
-            new_x * width + width * 2 / 10,
-            new_y * width + width * 2 / 10,
-            new_x * width + width * 8 / 10,
-            new_y * width + width * 8 / 10
-        )
-        player = new_x, new_y
-    for i, j, c, w in specials:
-        if new_x == i and new_y == j:
-            score -= walk_reward
-            score += w
-            if score > 0:
-                print("Success! score: ", score)
-            else:
-                print("Fail! score: ", score)
-            restart = True
-            return
+    global score, restart
+    new_x, new_y = player[0] + dx, player[1] + dy
+    score += walk_cost
+
+    if 0 <= new_x < grid_size_x and 0 <= new_y < grid_size_y and (new_x, new_y) not in walls:
+        move_me(new_x, new_y)
+
+    if (new_x, new_y) in specials:
+        c, w = specials[(new_x, new_y)]
+        score -= walk_cost
+        score += w
+        if score > 0:
+            print("Success! score: ", score)
+        else:
+            print("Fail! score: ", score)
+        restart = True
+        return
 
 
 def call_up():
@@ -119,23 +113,29 @@ def call_right():
     try_move(1, 0)
 
 
-def restart_game():
+def restart_game(scores):
     global player, score, restart
-    player = 0, y - 1
+    player = 0, 0
     score = 1
     restart = False
-    board.coords(
-        me,
-        player[0] * width + width * 2 / 10,
-        player[1] * width + width * 2 / 10,
-        player[0] * width + width * 8 / 10,
-        player[1] * width + width * 8 / 10
-    )
+    move_me(*player)
+
+    redraw_action_weights(scores or {})
 
 
-def has_restarted():
-    return restart
+def redraw_action_weights(scores, cache={}):
+    for key, triangle in triangles.items():
+        value = scores[key]
+        if value == cache.get(key):
+            continue
+        cache[key] = value
+        green = int(min((value + 1) * 128 + 16, 255))
+        red = 255 - green + 16
+        color = "#{:x}{:x}00".format(red, green)
+        board.itemconfigure(triangle, fill=color)
 
+
+render_grid()
 
 master.bind("<Up>", call_up)
 master.bind("<Down>", call_down)
