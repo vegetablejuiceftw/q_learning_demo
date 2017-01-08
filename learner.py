@@ -10,13 +10,13 @@ def do_action(action):
     position = world.player
     delta_score = -world.score
     if action == world.actions[0]:
-        world.try_move(0, -1)
+        world.try_move(0, -1, counter)
     elif action == world.actions[1]:
-        world.try_move(0, 1)
+        world.try_move(0, 1, counter)
     elif action == world.actions[2]:
-        world.try_move(-1, 0)
+        world.try_move(-1, 0, counter)
     elif action == world.actions[3]:
-        world.try_move(1, 0)
+        world.try_move(1, 0, counter)
     else:
         return
     new_position = world.player
@@ -41,11 +41,12 @@ def inc_q(position, action, alpha, inc):
 
 
 def run():
+    global counter
     time.sleep(1)
     ttl = 0
-    counter = -1
     start = time.time()
     alpha = 0.73
+    sample = []
     while True:
         counter += 1
         # Pick the right action
@@ -59,18 +60,23 @@ def run():
         inc_q(position, action, alpha, delta_score + discount * max_val)
 
         # Check if the game has restarted or packet has timed out
-        ttl += 1.0
+        ttl += 1
         if world.restart:
             world.restart_game(Q)
-            # print("{}".format(counter / (time.time()-start)))
-            print("{}".format(counter), ttl)
-            ttl = 1.0
+            sample.append(ttl)
+            sample = sample[-50:]
+            average_trip_time = sum(sample) / len(sample)
+            # print("{:.0f}".format(counter / (time.time()-start)))
+            print("{}".format(counter), ttl, round(average_trip_time))
+            ttl = 1
 
         # Update the learning rate
-        alpha = pow(ttl, -0.1)
+        # alpha = pow(ttl, -0.1)
 
-        # logic_tics_per_second = 240
+        # logic_tics_per_second = 512
         # time.sleep(1 / logic_tics_per_second)
+
+        world.update_specials(counter)
 
 
 def initial_q_table():
@@ -82,11 +88,13 @@ def initial_q_table():
 
     for position, data in world.specials.items():
         i, j = position
-        c, w = data
+        c, w, counter, rect = data
         for action in world.actions:
             Q[(i, j, action)] = w
     return Q
 
+
+counter = -1
 Q = initial_q_table()
 
 t = threading.Thread(target=run)

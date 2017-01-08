@@ -9,7 +9,7 @@ master = Tk()
 
 triangle_size = 0.1
 width = 25
-size = 18
+size = 19
 grid_size_x, grid_size_y = size, size
 actions = "up", "down", "left", "right"
 
@@ -18,12 +18,14 @@ player = 0, 0
 score = 1
 restart = False
 walk_cost = -0.04
-
-walls = {(randint(0, grid_size_x - 1), randint(0, grid_size_y - 1)) for _ in range(grid_size_x * grid_size_y // 6)}
-walls.discard((0, 0))
-specials = {(grid_size_x - 1, grid_size_y - 1): ("green", 1)}
-specials.update({(randint(0, grid_size_x - 1), randint(0, grid_size_y - 1)): ("red", -1) for _ in range(size // 2)})
 triangles = {}
+
+walls = set()
+
+specials = {}
+for _ in range(grid_size_x * grid_size_y // 5):
+    specials[(randint(0, grid_size_x - 1), randint(0, grid_size_y - 1))] = ["green", 1, None, None]
+specials = {key: value for key, value in specials.items() if key not in walls}
 
 
 def create_triangle(i, j, action):
@@ -57,8 +59,15 @@ def render_grid():
                 triangles[(i, j, action)] = create_triangle(i, j, action)
     for position, data in specials.items():
         i, j = position
-        c, w = data
-        board.create_rectangle(i * width, j * width, (i + 1) * width, (j + 1) * width, fill=c, width=1)
+        color = data[0]
+        specials[position][3] = board.create_rectangle(
+            i * width, j * width,
+            (i + 1) * width,
+            (j + 1) * width,
+            fill=color,
+            width=1
+        )
+
     for i, j in walls:
         board.create_rectangle(i * width, j * width, (i + 1) * width, (j + 1) * width, fill="black", width=1)
 
@@ -77,24 +86,38 @@ def move_me(new_x, new_y):
     player = new_x, new_y
 
 
-def try_move(dx, dy):
+def try_move(dx, dy, game_counter):
     global score, restart
-    new_x, new_y = player[0] + dx, player[1] + dy
     score += walk_cost
+    new_x, new_y = player[0] + dx, player[1] + dy
+    key = new_x, new_y
 
-    if 0 <= new_x < grid_size_x and 0 <= new_y < grid_size_y and (new_x, new_y) not in walls:
+    if key in specials:
+        color, value, reset, rect = specials[key]
+        if not reset or key not in walls or reset < game_counter:
+            score += value - walk_cost
+            specials[key][2] = game_counter + randint(500, 1000)
+
+            color = "red"
+            specials[key][0] = color
+            board.itemconfigure(rect, fill=color)
+
+            walls.add(key)
+            restart = True
+
+    if 0 <= new_x < grid_size_x and 0 <= new_y < grid_size_y and key not in walls:
         move_me(new_x, new_y)
 
-    if (new_x, new_y) in specials:
-        c, w = specials[(new_x, new_y)]
-        score -= walk_cost
-        score += w
-        if score > 0:
-            print("Success! score: ", score)
-        else:
-            print("Fail! score: ", score)
-        restart = True
-        return
+
+def update_specials(game_counter):
+    for key, data in specials.items():
+        color, value, reset, rect = data
+
+        if reset and reset < game_counter and key in walls:
+            walls.discard(key)
+            color = "green"
+            specials[key][0] = color
+            board.itemconfigure(rect, fill=color)
 
 
 def call_up():
