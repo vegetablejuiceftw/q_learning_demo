@@ -1,3 +1,21 @@
+# Conclusions:
+First task was of course to refactor (nuke) the codebase as it was lacking on most parts even for me...
+
+This kind of learning algorithm seems very _organic_ in the sense it gets stuck in **old patterns**.
+This is very well illustrated in network packet branch where I explored the packet routing likeness of this setup to simulate a workload distribution system.
+
+![alt text](http://i.imgur.com/6WmMxGJ.gif "Network simulation")
+Here we can see once the packet(actor) has reached a goal, the goal goes to a sleep state (wall in the old demo).
+What is apparent is that the nodes chosen are all close to the ones chosen last.
+There are areas of higher usage peak.
+It is clear from this that the actor will choose an path that it knows to be good before evaluating anything closer to its spawn point.
+
+What is not as apparent is that the average trip time keeps increasing.
+As I also have observed the actor getting stuck in circular paths, the current feedback mechanism needs to be revisited.
+
+One possible solution to this is the introduction of randomness through random placement of the actor.
+While this is effective in forcing new paths, it also makes it less intuitive to understand shortcomings of this implementation.
+
 # q_learning_demo
 This is the code for "How to use Q Learning in Video Games Easily" by Siraj Raval on Youtube
 

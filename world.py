@@ -8,7 +8,7 @@ seed("Cupcakes")
 master = Tk()
 
 triangle_size = 0.1
-width = 25
+width = 30
 size = 19
 grid_size_x, grid_size_y = size, size
 actions = "up", "down", "left", "right"
@@ -96,7 +96,7 @@ def try_move(dx, dy, game_counter):
         color, value, reset, rect = specials[key]
         if not reset or key not in walls or reset < game_counter:
             score += value - walk_cost
-            specials[key][2] = game_counter + randint(500, 1000)
+            specials[key][2] = game_counter + randint(500, 900)
 
             color = "red"
             specials[key][0] = color
@@ -139,6 +139,12 @@ def call_right():
 def restart_game(scores):
     global player, score, restart
     player = 0, 0
+    # while True:
+    #     key = randint(0, grid_size_x - 1), randint(0, grid_size_y - 1)
+    #     if key not in specials:
+    #         player = key
+    #         break
+
     score = 1
     restart = False
     move_me(*player)
